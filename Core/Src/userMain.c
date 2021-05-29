@@ -8,6 +8,9 @@
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef hi2c1;
 
+extern UART_HandleTypeDef huart4;
+
+
 int _write(int file, char *ptr, int len) {
 	HAL_UART_Transmit(&huart2, (uint8_t*) ptr, len, 500);
 //	HAL_UART_Transmit_DMA(&huart2, (uint8_t*) ptr, len);
@@ -157,7 +160,33 @@ struct BMP280_ctrl_meas {
 //	bmp280_validateChipId(b);
 //}
 
+void doNote(uint8_t note) {
+	uint8_t midiData[5];
+	midiData[0] = 0x90;
+	midiData[1] = note;
+	midiData[2] = 0x7f;
+
+	midiData[2] = 0x7f;
+	HAL_UART_Transmit(&huart4, (uint8_t*) midiData, 3, 500);
+	HAL_Delay(500);
+
+	midiData[2] = 0x00;
+	HAL_UART_Transmit(&huart4, (uint8_t*) midiData, 3, 500);
+	HAL_Delay(500);
+
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+
+}
+
 void userMain() {
+
+	while (1) {
+		doNote(0x2a);
+		doNote(0x2a + 2);
+		doNote(0x2a + 4);
+		doNote(0x2a + 5);
+	}
+
 
 	BMP280_HandleTypedef bmp280;
 
