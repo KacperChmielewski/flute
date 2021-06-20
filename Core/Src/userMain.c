@@ -1,45 +1,24 @@
-#include <bmp280.h>
-#include <signalProcessing_baseline.h>
 #include <stm32l4xx.h>
 #include "userMain.h"
 
 #include "stm32l4xx_hal.h"
 #include <stdio.h>
 
+#include <bmp280.h>
+#include <midi.h>
+#include <signalProcessing_baseline.h>
+
 extern I2C_HandleTypeDef hi2c1;
 
 extern UART_HandleTypeDef huart4;
 
-void doNote(uint8_t note, uint8_t vel) {
-	uint8_t midiData[5];
-	midiData[0] = 0x90;
-	midiData[1] = note;
-	midiData[2] = vel;
-	HAL_UART_Transmit(&huart4, (uint8_t*) midiData, 3, 500);
-}
-
-#define MIDI_NOTE_C4 0x2a
-#define MIDI_NOTE_D4 0x2a+2
-#define MIDI_NOTE_E4 0x2a+4
-#define MIDI_NOTE_F4 0x2a+5
-#define MIDI_NOTE_G4 0x2a+7
-#define MIDI_NOTE_A4 0x2a+9
-#define MIDI_NOTE_H4 0x2a+11
-#define MIDI_NOTE_C5 0x2a+12
-
-uint8_t song[] = {
-MIDI_NOTE_C4,
-MIDI_NOTE_D4,
-MIDI_NOTE_E4,
-MIDI_NOTE_F4,
-MIDI_NOTE_G4,
-MIDI_NOTE_A4,
-MIDI_NOTE_H4,
-MIDI_NOTE_C5,
-MIDI_NOTE_C5,
-MIDI_NOTE_C5, };
+uint8_t song[] = { MIDI_NOTE_C4, MIDI_NOTE_D4, MIDI_NOTE_E4, MIDI_NOTE_F4,
+		MIDI_NOTE_G4, MIDI_NOTE_A4, MIDI_NOTE_H4, MIDI_NOTE_C5, MIDI_NOTE_C5,
+		MIDI_NOTE_C5, };
 
 uint32_t songLen = 10;
+
+struct midi_handle myMidi = { };
 
 struct midiMachine {
 	uint8_t isNotePlayed;
@@ -48,30 +27,32 @@ struct midiMachine {
 
 struct midiMachine machine = { };
 
+void midiMachine_relase() {
+	if (machine.isNotePlayed) {
+		midi_doNote(&myMidi, machine.lastNote, 0);
+		machine.isNotePlayed = 0;
+	}
+}
+
 void midiMachine_play(uint8_t note) {
 	midiMachine_relase();
-	doNote(song[note], 0x7f);
+	midi_doNote(&myMidi, song[note], 0x7f);
 	machine.isNotePlayed = 1;
 	machine.lastNote = note;
 }
 
-void midiMachine_relase() {
-	if (machine.isNotePlayed) {
-		doNote(machine.lastNote, 0);
-		machine.isNotePlayed = 0;
-	}
-}
+
 
 void playSong() {
 	static uint32_t note = 0;
 	static isOn = false;
 
 	if (isOn) {
-		doNote(song[note], 0);
+		midi_doNote(&myMidi, song[note], 0);
 		isOn = false;
 		note++;
 	} else {
-		doNote(song[note], 0x7f);
+		midi_doNote(&myMidi, song[note], 0x7f);
 		isOn = true;
 	}
 
@@ -105,6 +86,9 @@ void userMain() {
 		printf("BMP280 initialization failed\r\n");
 		HAL_Delay(200);
 	}
+
+	// MIDI init
+	myMidi.huart = &huart4;
 
 	// dataProcessing pressure init
 	baseline_Reset();
