@@ -18,6 +18,8 @@ enum midi_note {
 	MIDI_NOTE_C5 = 0x2a + 12,
 };
 
+void midi_doNote(struct midi_handle *midi, uint8_t note, uint8_t vel);
+
 //11111111 C
 //01111111 D
 //00111111 E

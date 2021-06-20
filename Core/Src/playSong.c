@@ -6,7 +6,7 @@ extern struct midi_handle myMidi;
 
 uint8_t song[] = { MIDI_NOTE_C4, MIDI_NOTE_D4, MIDI_NOTE_E4, MIDI_NOTE_F4,
 		MIDI_NOTE_G4, MIDI_NOTE_A4, MIDI_NOTE_H4, MIDI_NOTE_C5, MIDI_NOTE_C5,
-		MIDI_NOTE_C5, };
+		MIDI_NOTE_D4, };
 
 static void playSong() {
 	static uint32_t note = 0;
@@ -27,7 +27,7 @@ static void playSong() {
 }
 
 void playSong_isBlow(bool isOn) {
-	static lastOn = false;
+	static bool lastOn = false;
 
 	if (isOn != lastOn) {
 		lastOn = isOn;
