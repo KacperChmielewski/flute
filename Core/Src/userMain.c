@@ -6,17 +6,12 @@
 
 #include <bmp280.h>
 #include <midi.h>
+#include <playSong.h>
 #include <signalProcessing_baseline.h>
 
 extern I2C_HandleTypeDef hi2c1;
 
 extern UART_HandleTypeDef huart4;
-
-uint8_t song[] = { MIDI_NOTE_C4, MIDI_NOTE_D4, MIDI_NOTE_E4, MIDI_NOTE_F4,
-		MIDI_NOTE_G4, MIDI_NOTE_A4, MIDI_NOTE_H4, MIDI_NOTE_C5, MIDI_NOTE_C5,
-		MIDI_NOTE_C5, };
-
-uint32_t songLen = 10;
 
 struct midi_handle myMidi = { };
 
@@ -36,39 +31,12 @@ void midiMachine_relase() {
 
 void midiMachine_play(uint8_t note) {
 	midiMachine_relase();
-	midi_doNote(&myMidi, song[note], 0x7f);
+	midi_doNote(&myMidi, note, 0x7f);
 	machine.isNotePlayed = 1;
 	machine.lastNote = note;
 }
 
 
-
-void playSong() {
-	static uint32_t note = 0;
-	static isOn = false;
-
-	if (isOn) {
-		midi_doNote(&myMidi, song[note], 0);
-		isOn = false;
-		note++;
-	} else {
-		midi_doNote(&myMidi, song[note], 0x7f);
-		isOn = true;
-	}
-
-	if (note == songLen) {
-		note = 0;
-	}
-}
-
-void dupa(bool isOn) {
-	static lastOn = false;
-
-	if (isOn != lastOn) {
-		lastOn = isOn;
-		playSong();
-	}
-}
 
 void userMain() {
 	BMP280_HandleTypedef bmp280;
@@ -121,7 +89,7 @@ void userMain() {
 			isBlow = false;
 		}
 
-		dupa(isBlow);
+		playSong_isBlow(isBlow);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, isBlow);
 
 		printf("%8d,%8d\r\n", pressure, baseline);
