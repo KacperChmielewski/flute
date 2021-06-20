@@ -1,4 +1,5 @@
 #include <bmp280.h>
+#include <signalProcessing_baseline.h>
 #include <stm32l4xx.h>
 #include "userMain.h"
 
@@ -132,68 +133,111 @@ struct BMP280_ctrl_meas {
 	/** Device mode */
 	uint8_t mode :2;
 };
-//
-//struct bmp280 {
-//	I2C_HandleTypeDef* hi2c;
-//	uint8_t addr;
-//	bool isCalibrationDataReady;
-//	uint8_t calibrationData[26];
-//
-//};
-//
-//bool bmp280_validateChipId(struct bmp280* b) {
-//	uint8_t res;
-//	uint8_t data[1];
-//	res = HAL_I2C_Mem_Read(b, b->addr, BMP280_REGISTER_CHIPID, 1,
-//			data, 1, 100);
-//	printf("Chip ID %02x\r\n", data[0]);
-//	return true;
-//
-//}
-//
-//void bmp280_init(struct bmp280* b) {
-//	b->hi2c = &hi2c1;
-//	b->addr = BMP280_ADDRESS;
-//
-//	b->isCalibrationDataReady = false;
-//
-//	bmp280_validateChipId(b);
-//}
 
-void doNote(uint8_t note) {
+
+
+void doNote(uint8_t note, uint8_t vel) {
 	uint8_t midiData[5];
 	midiData[0] = 0x90;
 	midiData[1] = note;
-	midiData[2] = 0x7f;
-
-	midiData[2] = 0x7f;
+	midiData[2] = vel;
 	HAL_UART_Transmit(&huart4, (uint8_t*) midiData, 3, 500);
-	HAL_Delay(500);
-
-	midiData[2] = 0x00;
-	HAL_UART_Transmit(&huart4, (uint8_t*) midiData, 3, 500);
-	HAL_Delay(500);
-
-	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-
 }
+
+
+#define MIDI_NOTE_C4 0x2a
+#define MIDI_NOTE_D4 0x2a+2
+#define MIDI_NOTE_E4 0x2a+4
+#define MIDI_NOTE_F4 0x2a+5
+#define MIDI_NOTE_G4 0x2a+7
+#define MIDI_NOTE_A4 0x2a+9
+#define MIDI_NOTE_H4 0x2a+11
+#define MIDI_NOTE_C5 0x2a+12
+
+uint8_t song[] = {
+		MIDI_NOTE_C4,
+		MIDI_NOTE_D4,
+		MIDI_NOTE_E4,
+		MIDI_NOTE_F4,
+		MIDI_NOTE_G4,
+		MIDI_NOTE_A4,
+		MIDI_NOTE_H4,
+		MIDI_NOTE_C5,
+		MIDI_NOTE_C5,
+		MIDI_NOTE_C5,
+};
+
+uint32_t songLen = 10;
+
+struct midiMachine{
+	uint8_t isNotePlayed;
+	uint8_t lastNote;
+};
+
+struct midiMachine machine = {};
+
+void midiMachine_play(uint8_t note) {
+	midiMachine_relase();
+	doNote(song[note], 0x7f);
+	machine.isNotePlayed = 1;
+	machine.lastNote = note;
+}
+
+void midiMachine_relase() {
+	if (machine.isNotePlayed) {
+		doNote(machine.lastNote, 0);
+		machine.isNotePlayed = 0;
+	}
+}
+
+
+
+
+
+void playSong() {
+	static uint32_t note = 0;
+	static isOn = false;
+
+	if (isOn) {
+		doNote(song[note], 0);
+		isOn = false;
+		note++;
+	} else {
+		doNote(song[note], 0x7f);
+		isOn = true;
+	}
+
+	if (note == songLen) {
+		note = 0;
+	}
+}
+
+void dupa(bool isOn) {
+	static lastOn = false;
+
+	if(isOn != lastOn) {
+		lastOn = isOn;
+		playSong();
+	}
+}
+
 
 void userMain() {
 
-	while (1) {
-		doNote(0x2a);
-		doNote(0x2a + 2);
-		doNote(0x2a + 4);
-		doNote(0x2a + 5);
-	}
-
+//	while (1) {
+//		doNote(0x2a);
+//		doNote(0x2a + 2);
+//		doNote(0x2a + 4);
+//		doNote(0x2a + 5);
+//	}
+//
 
 	BMP280_HandleTypedef bmp280;
 
 	int32_t temperature;
 	uint32_t pressure;
 
-	printf("START!\r\n");
+//	printf("START!\r\n");
 
 	bmp280_init_default_params(&bmp280.params);
 	bmp280.addr = BMP280_I2C_ADDRESS_0;
@@ -209,15 +253,17 @@ void userMain() {
 		HAL_Delay(200);
 	}
 	bool bme280p = bmp280.id == BME280_CHIP_ID;
-	printf("BMP280: found %s\r\n", bme280p ? "BME280" : "BMP280");
-	//HAL_UART_Transmit(&huart1, Data, size, 1000);
+//	printf("BMP280: found %s\r\n", bme280p ? "BME280" : "BMP280");
 
-	/* USER CODE END 2 */
+	baseline_Reset();
 
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+	uint32_t baseline;
+	uint32_t i = 0;
+	int32_t delta;
+
+	bool isBlow = false;
 	while (1) {
-
+		i++;
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -227,8 +273,29 @@ void userMain() {
 			//HAL_UART_Transmit(&huart1, Data, size, 1000);
 			HAL_Delay(200);
 		}
+		if(i < 5) {
+			baseline = pressure;
 
-		printf("%10d,%5d\r\n", pressure, temperature);
+		} else {
+			baseline = baseline_Calc(pressure, isBlow);
+
+		}
+
+		delta = pressure - baseline;
+
+		if (delta > 10000) {
+			isBlow = true;
+		}
+
+		if (delta < 800) {
+			isBlow = false;
+		}
+
+
+		dupa(isBlow);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, isBlow);
+
+		printf("%8d,%8d\r\n", pressure, baseline);
 	}
 //
 //	BMP280_HandleTypedef bmp280;
@@ -305,10 +372,10 @@ void userMain() {
 	uint8_t res = 0;
 	uint8_t tmp[8];
 
-	printf("START!\r\n");
-
-	printf("res : %02x\r\n", res);
-	printf("tmp: %02x\r\n", tmp[0]);
+//	printf("START!\r\n");
+//
+//	printf("res : %02x\r\n", res);
+//	printf("tmp: %02x\r\n", tmp[0]);
 	struct BMP280_config b_config = { 0 };
 	struct BMP280_ctrl_meas b_ctrl_meas = { 0 };
 //
