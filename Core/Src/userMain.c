@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include <bmp280.h>
+#include <hysteresis.h>
 #include <midi.h>
 #include <playSong.h>
 #include <signalProcessing_baseline.h>
@@ -36,7 +37,80 @@ void midiMachine_play(uint8_t note) {
 	machine.lastNote = note;
 }
 
+/* *** */
 
+struct {
+	bool isActive;
+	uint8_t lastNote;
+} myFlute;
+
+bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
+	*noteOut = 0;
+	switch (buttons) {
+	case b11111111:
+		*noteOut = MIDI_NOTE_C4;
+		break;
+	case b01111111:
+		*noteOut = MIDI_NOTE_D4;
+		break;
+	case b00111111:
+		*noteOut = MIDI_NOTE_E4;
+		break;
+	case b11011111:
+		*noteOut = MIDI_NOTE_F4;
+		break;
+	case b00001111:
+		*noteOut = MIDI_NOTE_G4;
+		break;
+	case b00000111:
+		*noteOut = MIDI_NOTE_A4;
+		break;
+	case b00000011:
+		*noteOut = MIDI_NOTE_H4;
+		break;
+	case b00000101:
+		*noteOut = MIDI_NOTE_C5;
+		break;
+	}
+
+	if (*noteOut != 0) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+void flute_play(uint8_t note) {
+	midiMachine_play(note);
+	myFlute.lastNote = note;
+	myFlute.isActive = true;
+}
+
+void flute_feed(bool isBlow, uint8_t buttons) {
+	if (isBlow == false) {
+		myFlute.isActive = false;
+		midiMachine_relase();
+		return;
+	}
+
+	uint8_t currentNote;
+
+	if (flute_buttonsToNote(buttons, &currentNote) == false) {
+		return;
+	}
+
+	if (myFlute.isActive == false) {
+		flute_play(currentNote);
+		return;
+	}
+
+	if (myFlute.lastNote != currentNote) {
+		flute_play(currentNote);
+	}
+
+}
+
+/* *** */
 
 void userMain() {
 	BMP280_HandleTypedef bmp280;
@@ -64,6 +138,11 @@ void userMain() {
 	uint32_t i = 0;
 	int32_t delta;
 	bool isBlow = false;
+
+	struct hysteresis blowTh;
+
+	hysteresis_init(&blowTh, 10000, 3000, true);
+
 	while (1) {
 		i++;
 
@@ -76,25 +155,16 @@ void userMain() {
 
 		} else {
 			baseline = baseline_Calc(pressure, isBlow);
-
 		}
-
 		delta = pressure - baseline;
+		isBlow = hysteresis_th(&blowTh, delta);
 
-		if (delta > 10000) {
-			isBlow = true;
-		}
-
-		if (delta < 800) {
-			isBlow = false;
-		}
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, isBlow);
 
 		playSong_isBlow(isBlow);
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, isBlow);
 
 		printf("%8d,%8d\r\n", pressure, baseline);
 		HAL_Delay(10);
-
 	}
 
 }
