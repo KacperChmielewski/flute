@@ -8,14 +8,14 @@ struct midi_handle {
 };
 
 enum midi_note {
-	MIDI_NOTE_C4 = 0x2a,
-	MIDI_NOTE_D4 = 0x2a + 2,
-	MIDI_NOTE_E4 = 0x2a + 4,
-	MIDI_NOTE_F4 = 0x2a + 5,
-	MIDI_NOTE_G4 = 0x2a + 7,
-	MIDI_NOTE_A4 = 0x2a + 9,
-	MIDI_NOTE_H4 = 0x2a + 11,
-	MIDI_NOTE_C5 = 0x2a + 12,
+	MIDI_NOTE_C4 = 0x24 + 24,
+	MIDI_NOTE_D4 = MIDI_NOTE_C4 + 2,
+	MIDI_NOTE_E4 = MIDI_NOTE_C4 + 4,
+	MIDI_NOTE_F4 = MIDI_NOTE_C4 + 5,
+	MIDI_NOTE_G4 = MIDI_NOTE_C4 + 7,
+	MIDI_NOTE_A4 = MIDI_NOTE_C4 + 9,
+	MIDI_NOTE_H4 = MIDI_NOTE_C4 + 11,
+	MIDI_NOTE_C5 = MIDI_NOTE_C4 + 12,
 };
 
 void midi_doNote(struct midi_handle *midi, uint8_t note, uint8_t vel);

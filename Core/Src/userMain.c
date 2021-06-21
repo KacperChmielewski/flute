@@ -46,32 +46,32 @@ struct {
 
 bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
 	*noteOut = 0;
-	switch (buttons) {
-	case b11111111:
-		*noteOut = MIDI_NOTE_C4;
-		break;
-	case b01111111:
-		*noteOut = MIDI_NOTE_D4;
-		break;
-	case b00111111:
-		*noteOut = MIDI_NOTE_E4;
-		break;
-	case b11011111:
-		*noteOut = MIDI_NOTE_F4;
-		break;
-	case b00001111:
-		*noteOut = MIDI_NOTE_G4;
-		break;
-	case b00000111:
-		*noteOut = MIDI_NOTE_A4;
-		break;
-	case b00000011:
-		*noteOut = MIDI_NOTE_H4;
-		break;
-	case b00000101:
-		*noteOut = MIDI_NOTE_C5;
-		break;
-	}
+//	switch (buttons) {
+//	case b11111111:
+//		*noteOut = MIDI_NOTE_C4;
+//		break;
+//	case b01111111:
+//		*noteOut = MIDI_NOTE_D4;
+//		break;
+//	case b00111111:
+//		*noteOut = MIDI_NOTE_E4;
+//		break;
+//	case b11011111:
+//		*noteOut = MIDI_NOTE_F4;
+//		break;
+//	case b00001111:
+//		*noteOut = MIDI_NOTE_G4;
+//		break;
+//	case b00000111:
+//		*noteOut = MIDI_NOTE_A4;
+//		break;
+//	case b00000011:
+//		*noteOut = MIDI_NOTE_H4;
+//		break;
+//	case b00000101:
+//		*noteOut = MIDI_NOTE_C5;
+//		break;
+//	}
 
 	if (*noteOut != 0) {
 		return true;
