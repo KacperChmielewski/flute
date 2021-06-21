@@ -15,7 +15,6 @@
 #include <tsl_user.h>
 
 extern I2C_HandleTypeDef hi2c1;
-
 extern UART_HandleTypeDef huart4;
 
 struct midi_handle myMidi = { };
@@ -60,7 +59,8 @@ bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
 	case 0b00111111:
 		*noteOut = MIDI_NOTE_E4;
 		break;
-	case 0b11011111:
+//	case 0b11011111:
+	case 0b00011111:
 		*noteOut = MIDI_NOTE_F4;
 		break;
 	case 0b00001111:
@@ -75,7 +75,29 @@ bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
 	case 0b00000101:
 		*noteOut = MIDI_NOTE_C5;
 		break;
-	}
+	case 0b00000100:
+	case 0b01111110:
+		*noteOut = MIDI_NOTE_D5;
+		break;
+	case 0b00111110:
+		*noteOut = MIDI_NOTE_E5;
+		break;
+	case 0b00011110:
+		*noteOut = MIDI_NOTE_F5;
+		break;
+	case 0b00001110:
+		*noteOut = MIDI_NOTE_G5;
+		break;
+	case 0b00000110:
+		*noteOut = MIDI_NOTE_A5;
+		break;
+	case 0b00000010:
+		*noteOut = MIDI_NOTE_H5;
+		break;
+	case 0b00000000:
+		*noteOut = MIDI_NOTE_C6;
+		break;
+}
 
 	if (*noteOut != 0) {
 		return true;
@@ -91,7 +113,7 @@ void flute_play(uint8_t note) {
 }
 
 void flute_feed(bool isBlow, uint8_t buttons) {
-	printf("flut: %d %02x\r\n", isBlow, buttons);
+//	printf("flut: %d %02x\r\n", isBlow, buttons);
 	if (isBlow == false) {
 		myFlute.isActive = false;
 		midiMachine_relase();
@@ -122,7 +144,7 @@ void readKeys(uint16_t *holes) {
 		HAL_Delay(1);
 	}
 
-#if 0
+#if 1
 	printf("%3d %3d %3d %3d %3d %3d %3d %3d\r\n", holes[0], holes[1], holes[2],
 			holes[3], holes[4], holes[5], holes[6], holes[7]);
 #endif
@@ -181,8 +203,6 @@ void userMain() {
 	for (int i = 0; i < 8; ++i) {
 		hysteresis_init(&holeHys[i], 300, 280, true);
 	}
-	hysteresis_init(&holeHys[6], 499, 495, true);
-	hysteresis_init(&holeHys[7], 499, 495, true);
 
 	uint8_t temp;
 
@@ -223,7 +243,7 @@ void userMain() {
 //		printf("\r\n");
 
 //		printf("%02x\r\n", buttons);
-		buttons += 3;
+//		buttons += 3;
 		flute_feed(isBlow, buttons);
 
 //		HAL_Delay(100);
