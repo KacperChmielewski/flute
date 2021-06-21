@@ -10,6 +10,10 @@
 #include <playSong.h>
 #include <signalProcessing_baseline.h>
 
+#include <tsl_linrot.h>
+#include <tsl_touchkey.h>
+#include <tsl_user.h>
+
 extern I2C_HandleTypeDef hi2c1;
 
 extern UART_HandleTypeDef huart4;
@@ -46,32 +50,32 @@ struct {
 
 bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
 	*noteOut = 0;
-//	switch (buttons) {
-//	case b11111111:
-//		*noteOut = MIDI_NOTE_C4;
-//		break;
-//	case b01111111:
-//		*noteOut = MIDI_NOTE_D4;
-//		break;
-//	case b00111111:
-//		*noteOut = MIDI_NOTE_E4;
-//		break;
-//	case b11011111:
-//		*noteOut = MIDI_NOTE_F4;
-//		break;
-//	case b00001111:
-//		*noteOut = MIDI_NOTE_G4;
-//		break;
-//	case b00000111:
-//		*noteOut = MIDI_NOTE_A4;
-//		break;
-//	case b00000011:
-//		*noteOut = MIDI_NOTE_H4;
-//		break;
-//	case b00000101:
-//		*noteOut = MIDI_NOTE_C5;
-//		break;
-//	}
+	switch (buttons) {
+	case 0b11111111:
+		*noteOut = MIDI_NOTE_C4;
+		break;
+	case 0b01111111:
+		*noteOut = MIDI_NOTE_D4;
+		break;
+	case 0b00111111:
+		*noteOut = MIDI_NOTE_E4;
+		break;
+	case 0b11011111:
+		*noteOut = MIDI_NOTE_F4;
+		break;
+	case 0b00001111:
+		*noteOut = MIDI_NOTE_G4;
+		break;
+	case 0b00000111:
+		*noteOut = MIDI_NOTE_A4;
+		break;
+	case 0b00000011:
+		*noteOut = MIDI_NOTE_H4;
+		break;
+	case 0b00000101:
+		*noteOut = MIDI_NOTE_C5;
+		break;
+	}
 
 	if (*noteOut != 0) {
 		return true;
@@ -87,6 +91,7 @@ void flute_play(uint8_t note) {
 }
 
 void flute_feed(bool isBlow, uint8_t buttons) {
+	printf("flut: %d %02x\r\n", isBlow, buttons);
 	if (isBlow == false) {
 		myFlute.isActive = false;
 		midiMachine_relase();
@@ -96,6 +101,7 @@ void flute_feed(bool isBlow, uint8_t buttons) {
 	uint8_t currentNote;
 
 	if (flute_buttonsToNote(buttons, &currentNote) == false) {
+		printf("invalid note\r\n");
 		return;
 	}
 
@@ -110,9 +116,34 @@ void flute_feed(bool isBlow, uint8_t buttons) {
 
 }
 
+void readKeys(uint16_t *holes) {
+
+	while (TSL_USER_STATUS_BUSY == tsl_user_Exec()) {
+		HAL_Delay(1);
+	}
+
+#if 0
+	printf("%3d %3d %3d %3d %3d %3d %3d %3d\r\n", holes[0], holes[1], holes[2],
+			holes[3], holes[4], holes[5], holes[6], holes[7]);
+#endif
+
+	holes[0] = 500 - MyTKeys[0].p_ChD->Meas;
+	holes[1] = 500 - MyTKeys[3].p_ChD->Meas;
+	holes[2] = 500 - MyTKeys[6].p_ChD->Meas;
+	holes[3] = 500 - MyTKeys[2].p_ChD->Meas;
+	holes[4] = 500 - MyTKeys[5].p_ChD->Meas;
+	holes[5] = 500 - MyTKeys[7].p_ChD->Meas;
+	holes[6] = 500 - MyTKeys[1].p_ChD->Meas;
+	holes[7] = 500 - MyTKeys[4].p_ChD->Meas;
+
+}
+
 /* *** */
 
+
 void userMain() {
+
+
 	BMP280_HandleTypedef bmp280;
 
 //	printf("START!\r\n");
@@ -143,6 +174,18 @@ void userMain() {
 
 	hysteresis_init(&blowTh, 10000, 3000, true);
 
+	// init holes
+	uint16_t myHoles[8];
+	struct hysteresis holeHys[8] = {};
+
+	for (int i = 0; i < 8; ++i) {
+		hysteresis_init(&holeHys[i], 300, 280, true);
+	}
+	hysteresis_init(&holeHys[6], 499, 495, true);
+	hysteresis_init(&holeHys[7], 499, 495, true);
+
+	uint8_t temp;
+
 	while (1) {
 		i++;
 
@@ -161,10 +204,29 @@ void userMain() {
 
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, isBlow);
 
-		playSong_isBlow(isBlow);
+//		playSong_isBlow(isBlow);
 
-		printf("%8d,%8d\r\n", pressure, baseline);
-		HAL_Delay(10);
+//		printf("%8d,%8d\r\n", pressure, baseline);
+		readKeys(myHoles);
+
+		uint8_t buttons = 0;
+		for (int i = 0; i < 8; ++i) {
+			temp = hysteresis_th(&holeHys[i], myHoles[i]);
+//			printf("%d %d\r\n", i, temp);
+//			printf("%d", temp);
+
+			if(temp) {
+				buttons |= 1 << (7-i);
+			}
+
+		}
+//		printf("\r\n");
+
+//		printf("%02x\r\n", buttons);
+		buttons += 3;
+		flute_feed(isBlow, buttons);
+
+//		HAL_Delay(100);
 	}
 
 }
