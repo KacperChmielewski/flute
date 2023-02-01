@@ -59,7 +59,7 @@ bool flute_buttonsToNote(uint8_t buttons, uint8_t *noteOut) {
 	case 0b00111111:
 		*noteOut = MIDI_NOTE_E4;
 		break;
-//	case 0b11011111:
+	case 0b11011111:
 	case 0b00011111:
 		*noteOut = MIDI_NOTE_F4;
 		break;
@@ -145,8 +145,8 @@ void readKeys(uint16_t *holes) {
 	}
 
 #if 1
-	printf("%3d %3d %3d %3d %3d %3d %3d %3d\r\n", holes[0], holes[1], holes[2],
-			holes[3], holes[4], holes[5], holes[6], holes[7]);
+//	printf("%3d %3d %3d %3d %3d %3d %3d %3d\r\n", holes[0], holes[1], holes[2],
+//			holes[3], holes[4], holes[5], holes[6], holes[7]);
 #endif
 
 	holes[0] = 500 - MyTKeys[0].p_ChD->Meas;
@@ -226,7 +226,7 @@ void userMain() {
 
 //		playSong_isBlow(isBlow);
 
-//		printf("%8d,%8d\r\n", pressure, baseline);
+		printf("%8d,%8d\r\n", pressure, baseline);
 		readKeys(myHoles);
 
 		uint8_t buttons = 0;
